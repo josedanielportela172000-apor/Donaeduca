@@ -1,0 +1,16 @@
+name: dona_educa
+description: App donaciones empresas-colegios — Proyecto de Grado
+version: 1.0.0+1
+
+environment:
+sdk: &#39;&gt;=3.0.0 &lt;4.0.0&#39;
+dependencies:
+flutter:
+sdk: flutter
+firebase_core: ^2.24.0
+firebase_auth: ^4.15.0
+cloud_firestore: ^4.13.0
+google_fonts: ^6.1.0
+intl: ^0.18.1
+flutter:
+uses-material-design: true

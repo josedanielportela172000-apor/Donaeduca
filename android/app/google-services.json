@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "139969156781",
+    "project_id": "donaedu-6accd",
+    "storage_bucket": "donaedu-6accd.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:139969156781:android:13f0632d6158ce4c45d824",
+        "android_client_info": {
+          "package_name": "com.example.donaedu"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBTiR7z9QNFjfJaRjk2ORuVcvy4J1mwwKo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
