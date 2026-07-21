@@ -63,7 +63,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '139969156781',
     projectId: 'donaedu-6accd',
     storageBucket: 'donaedu-6accd.firebasestorage.app',
-    iosBundleId: 'com.example.donaedu',
+    iosBundleId: 'edu.donaeduca.app',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
@@ -72,7 +72,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '139969156781',
     projectId: 'donaedu-6accd',
     storageBucket: 'donaedu-6accd.firebasestorage.app',
-    iosBundleId: 'com.example.donaedu',
+    iosBundleId: 'edu.donaeduca.app',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
