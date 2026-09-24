@@ -54,4 +54,4 @@ Usamos cifrado en tránsito (HTTPS/TLS), autenticación segura (correo o Google)
 
 ## 9. Contacto
 
-Dudas o solicitudes sobre esta política: [correo de contacto]
+Dudas o solicitudes sobre esta política:[josedanielportela172000@gmail.com]
