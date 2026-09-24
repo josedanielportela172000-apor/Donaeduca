@@ -102,12 +102,29 @@ class _ColegioHomeScreenState extends State<ColegioHomeScreen> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       child: ListTile(
                         contentPadding: const EdgeInsets.all(14),
-                        leading: CircleAvatar(
-                          backgroundColor:
-                              esPendiente ? AppColors.accent.withValues(alpha: 0.25) : AppColors.secondary.withValues(alpha: 0.2),
-                          child: Icon(esPendiente ? Icons.hourglass_empty : Icons.check_circle,
-                              color: esPendiente ? AppColors.dark : AppColors.secondary),
-                        ),
+                        leading: n.imagenUrl != null && n.imagenUrl!.isNotEmpty
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.network(
+                                  n.imagenUrl!,
+                                  width: 48,
+                                  height: 48,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) => CircleAvatar(
+                                    backgroundColor: esPendiente
+                                        ? AppColors.accent.withValues(alpha: 0.25)
+                                        : AppColors.secondary.withValues(alpha: 0.2),
+                                    child: Icon(esPendiente ? Icons.hourglass_empty : Icons.check_circle,
+                                        color: esPendiente ? AppColors.dark : AppColors.secondary),
+                                  ),
+                                ),
+                              )
+                            : CircleAvatar(
+                                backgroundColor:
+                                    esPendiente ? AppColors.accent.withValues(alpha: 0.25) : AppColors.secondary.withValues(alpha: 0.2),
+                                child: Icon(esPendiente ? Icons.hourglass_empty : Icons.check_circle,
+                                    color: esPendiente ? AppColors.dark : AppColors.secondary),
+                              ),
                         title: Text(n.descripcion, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                         subtitle: Text('${n.categoria} - $formattedDate'),
                         trailing: esPendiente

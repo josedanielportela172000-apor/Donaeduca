@@ -4,6 +4,7 @@ class NecesidadModel {
   final String id, colegioId, colegioNombre;
   final String descripcion, categoria, estado;
   final DateTime fecha;
+  final String? imagenUrl;
 
   NecesidadModel({
     required this.id,
@@ -13,6 +14,7 @@ class NecesidadModel {
     required this.categoria,
     required this.estado,
     required this.fecha,
+    this.imagenUrl,
   });
 
   factory NecesidadModel.fromMap(Map<String, dynamic> m, String id) {
@@ -26,6 +28,7 @@ class NecesidadModel {
       fecha: m['fecha'] is Timestamp 
           ? (m['fecha'] as Timestamp).toDate() 
           : DateTime.now(),
+      imagenUrl: m['imagenUrl'],
     );
   }
 
@@ -35,6 +38,7 @@ class NecesidadModel {
         'descripcion': descripcion,
         'categoria': categoria,
         'estado': estado,
-        'fecha': Timestamp.fromDate(fecha)
+        'fecha': Timestamp.fromDate(fecha),
+        if (imagenUrl != null) 'imagenUrl': imagenUrl,
       };
 }

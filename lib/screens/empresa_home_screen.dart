@@ -135,6 +135,26 @@ class _EmpresaHomeScreenState extends State<EmpresaHomeScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      if (n.imagenUrl != null && n.imagenUrl!.isNotEmpty) ...[
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: Image.network(
+                            n.imagenUrl!,
+                            height: 150,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => Container(
+                              height: 100,
+                              decoration: BoxDecoration(
+                                color: AppColors.grey.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Center(child: Icon(Icons.image_not_supported_outlined)),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
                       Text(n.colegioNombre, style: const TextStyle(fontSize: 12, color: Colors.grey)),
                       const SizedBox(height: 4),
                       Text(n.descripcion, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
