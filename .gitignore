@@ -46,3 +46,10 @@ app.*.map.json
 
 # Firebase configuration files (contain API keys)
 /android/app/google-services.json
+
+# Variables de entorno (contienen secretos)
+.env
+
+# Keystore de firma y sus credenciales (NO se suben al repo)
+/android/app/upload-keystore.jks
+/android/key.properties

@@ -14,7 +14,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   final _currentPasswordController = TextEditingController();
   final _newPasswordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  final _authService = AuthService();
+  final _authService = AuthService.instance;
   bool _isLoading = false;
   bool _isCurrentPasswordObscured = true;
   bool _isNewPasswordObscured = true;

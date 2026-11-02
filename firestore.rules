@@ -1,29 +1,261 @@
 rules_version = '2';
+
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Collection: usuarios
+// Document ID: {userId} (coincide con Firebase Auth UID)
+// Fields:
+//   - uid: string (requerido, inmutable) - UID del usuario
+//   - nombre: string (requerido) - Nombre de la persona o institución
+//   - email: string (requerido, inmutable) - Correo electrónico
+//   - tipo: string (requerido, inmutable) - Rol: 'admin' | 'colegio' | 'empresa'
+//   - direccion: string (opcional) - Dirección física
+//   - comuna: string (opcional) - Comuna en Cali
+//   - telefono: string (opcional) - Teléfono de contacto
+//   - identificacion: string (opcional) - RUT / NIT / Cédula
+//   - fotoUrl: string (opcional) - URL de foto de perfil
+//   - lat: number (opcional) - Latitud geográfica
+//   - lng: number (opcional) - Longitud geográfica
+//   - geo_preciso: bool (opcional) - Indicador de precisión geográfica
+//   - fcmToken: string (opcional) - Token FCM para notificaciones push
+//
+// Collection: necesidades
+// Document ID: {necesidadId} (generado automáticamente)
+// Fields:
+//   - colegioId: string (requerido, inmutable) - UID del colegio creador
+//   - colegioNombre: string (requerido) - Nombre del colegio
+//   - descripcion: string (requerido) - Detalle de la necesidad
+//   - categoria: string (requerido) - Categoría temática
+//   - estado: string (requerido) - 'pendiente' | 'cubierta'
+//   - fecha: timestamp (requerido) - Fecha de publicación
+//   - imagenUrl: string (opcional) - URL de imagen ilustrativa
+//
+// Collection: donaciones
+// Document ID: {donacionId} (generado automáticamente)
+// Fields:
+//   - empresaId: string (requerido, inmutable) - UID de la empresa donante
+//   - empresaNombre: string (requerido) - Nombre de la empresa donante
+//   - colegioId: string (requerido, inmutable) - UID del colegio beneficiario
+//   - colegioNombre: string (requerido) - Nombre del colegio beneficiario
+//   - necesidadId: string (requerido, inmutable) - ID de la necesidad cubierta
+//   - descripcion: string (requerido) - Descripción de la donación
+//   - fecha: timestamp (requerido, inmutable) - Fecha de la donación
+//   - estado: string (requerido) - 'Pendiente' | 'Recibida' | 'Completada'
+//   - recibidaEn: timestamp (opcional) - Fecha de confirmación por el colegio
+//   - empresaTelefono: string (opcional) - Teléfono de contacto
+//   - empresaEmail: string (opcional) - Correo de contacto
+//
+// Collection: usuarios/{userId}/notificaciones
+// Document ID: {notificacionId} (generado automáticamente)
+// Fields:
+//   - titulo: string (requerido) - Título de la notificación
+//   - mensaje: string (requerido) - Mensaje de la notificación (máx 500 caracteres)
+//   - tipo: string (requerido) - 'necesidad' | 'donacion' | 'recibo' | 'sistema'
+//   - leida: bool (requerido) - Estado de lectura de la notificación
+//   - fecha: timestamp (requerido) - Fecha de creación
+//   - necesidadId: string (condicional) - ID de la necesidad referenciada
+//   - donacionId: string (condicional) - ID de la donación referenciada
+//
+// Collection: empresas_publicas
+// Document ID: {uid} (UID de la empresa)
+// Fields:
+//   - tipo: string (requerido) - 'empresa'
+//   - nombre: string (opcional) - Nombre público de la empresa
+//
+// ===============================================================
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    match /usuarios/{userId} {
-      allow create: if request.auth != null && request.auth.uid == userId;
-      allow read: if request.auth != null && request.auth.uid == userId;
-      allow update: if request.auth != null && request.auth.uid == userId;
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isSignedIn() {
+      return request.auth != null;
     }
 
+    function isEmailVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    // Roles con Custom Claims de Firebase Auth con fallback transparente
+    // a la consulta del documento en Firestore para retrocompatibilidad total.
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.role == 'admin' ||
+        request.auth.token.tipo == 'admin' ||
+        (get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.tipo == 'admin')
+      );
+    }
+
+    function isColegio() {
+      return isSignedIn() && (
+        request.auth.token.role == 'colegio' ||
+        request.auth.token.tipo == 'colegio' ||
+        (get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.tipo == 'colegio')
+      );
+    }
+
+    function isEmpresa() {
+      return isSignedIn() && (
+        request.auth.token.role == 'empresa' ||
+        request.auth.token.tipo == 'empresa' ||
+        (get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.tipo == 'empresa')
+      );
+    }
+
+    // Compatibilidad con Firebase App Check:
+    // Permite verificar tokens de App Check si se validan en reglas o a nivel de infraestructura.
+    function isAppCheckValid() {
+      return request.app != null;
+    }
+
+    // ===============================================================
+    // Colección: usuarios
+    // ===============================================================
+    match /usuarios/{userId} {
+      allow create: if isSignedIn() && request.auth.uid == userId
+                    && request.resource.data.tipo in ['empresa', 'colegio'];
+      
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      
+      // El usuario puede editar su propio perfil manteniendo inmutables: tipo, uid y email.
+      // El administrador cuenta con permiso de actualización completa.
+      allow update: if isAdmin()
+                    || (isSignedIn() && request.auth.uid == userId
+                        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['tipo', 'uid', 'email']));
+      
+      allow delete: if isAdmin();
+    }
+
+    // ===============================================================
+    // Colección: necesidades
+    // ===============================================================
     match /necesidades/{necesidadId} {
       allow read: if true;
-      allow create: if request.auth != null
-                    && request.resource.data.colegioId == request.auth.uid;
-      allow update: if request.auth != null
-                    && resource.data.colegioId == request.auth.uid;
-      allow delete: if request.auth != null
-                    && resource.data.colegioId == request.auth.uid;
+
+      // Crear requiere rol colegio y correo electrónico verificado.
+      allow create: if isColegio()
+                    && isEmailVerified()
+                    && request.resource.data.colegioId == request.auth.uid
+                    && request.resource.data.estado == 'pendiente'
+                    && request.resource.data.colegioNombre is string
+                    && request.resource.data.colegioNombre.size() > 0
+                    && request.resource.data.descripcion is string
+                    && request.resource.data.descripcion.size() > 0
+                    && request.resource.data.categoria is string
+                    && request.resource.data.categoria.size() > 0;
+
+      allow update: if isAdmin()
+                    || (isSignedIn() && resource.data.colegioId == request.auth.uid)
+                    || (isEmpresa()
+                        && resource.data.estado == 'pendiente'
+                        && request.resource.data.estado == 'cubierta'
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estado']));
+
+      allow delete: if isAdmin()
+                    || (isSignedIn() && resource.data.colegioId == request.auth.uid);
     }
 
+    // ===============================================================
+    // Colección: donaciones
+    // ===============================================================
     match /donaciones/{donacionId} {
-      allow create: if request.auth != null
-                    && request.resource.data.empresaId == request.auth.uid;
-      allow read: if request.auth != null
-                  && (resource.data.empresaId == request.auth.uid
-                      || resource.data.colegioId == request.auth.uid);
+      // Crear requiere rol empresa y correo electrónico verificado.
+      allow create: if isEmpresa()
+                    && isEmailVerified()
+                    && request.resource.data.empresaId == request.auth.uid
+                    && request.resource.data.colegioId is string
+                    && request.resource.data.necesidadId is string
+                    && request.resource.data.descripcion is string
+                    && request.resource.data.fecha is timestamp;
+
+      allow get: if isAdmin()
+                 || (isSignedIn() && resource.data.empresaId == request.auth.uid)
+                 || (isSignedIn() && resource.data.colegioId == request.auth.uid);
+
+      allow list: if isAdmin()
+                  || (isSignedIn() && resource.data.empresaId == request.auth.uid)
+                  || (isSignedIn() && resource.data.colegioId == request.auth.uid);
+
+      // El colegio beneficiario confirma la recepción marcando 'Recibida' y registrando 'recibidaEn'.
+      allow update: if isAdmin()
+                    || (isColegio() && resource.data.colegioId == request.auth.uid
+                        && request.resource.data.estado == 'Recibida'
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estado', 'recibidaEn']));
+
+      allow delete: if isAdmin();
+    }
+
+    // ===============================================================
+    // Subcolección: notificaciones en usuarios/{userId}/notificaciones
+    // ===============================================================
+    match /usuarios/{userId}/notificaciones/{notificacionId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+
+      allow create: if isAdmin()
+        || (
+          isColegio()
+          && request.resource.data.tipo == 'necesidad'
+          && request.resource.data.titulo is string
+          && request.resource.data.titulo.size() > 0
+          && request.resource.data.mensaje is string
+          && request.resource.data.mensaje.size() > 0
+          && request.resource.data.leida == false
+          && request.resource.data.fecha is timestamp
+          && request.resource.data.necesidadId is string
+          && get(/databases/$(database)/documents/usuarios/$(userId)).data.tipo == 'empresa'
+          && get(/databases/$(database)/documents/necesidades/$(request.resource.data.necesidadId)).data.colegioId == request.auth.uid
+        )
+        || (
+          isEmpresa()
+          && request.resource.data.tipo == 'donacion'
+          && request.resource.data.titulo is string
+          && request.resource.data.titulo.size() > 0
+          && request.resource.data.mensaje is string
+          && request.resource.data.mensaje.size() > 0
+          && request.resource.data.leida == false
+          && request.resource.data.fecha is timestamp
+          && request.resource.data.necesidadId is string
+          && request.resource.data.donacionId is string
+          && get(/databases/$(database)/documents/donaciones/$(request.resource.data.donacionId)).data.empresaId == request.auth.uid
+          && get(/databases/$(database)/documents/donaciones/$(request.resource.data.donacionId)).data.colegioId == userId
+        )
+        || (
+          isColegio()
+          && request.resource.data.tipo == 'recibo'
+          && request.resource.data.titulo is string
+          && request.resource.data.titulo.size() > 0
+          && request.resource.data.mensaje is string
+          && request.resource.data.mensaje.size() > 0
+          && request.resource.data.leida == false
+          && request.resource.data.fecha is timestamp
+          && request.resource.data.necesidadId is string
+          && request.resource.data.donacionId is string
+          && get(/databases/$(database)/documents/donaciones/$(request.resource.data.donacionId)).data.colegioId == request.auth.uid
+          && get(/databases/$(database)/documents/donaciones/$(request.resource.data.donacionId)).data.empresaId == userId
+        );
+
+      allow update: if isSignedIn() && request.auth.uid == userId
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['leida']);
+
+      allow delete: if isAdmin();
+    }
+
+    // ===============================================================
+    // Colección: empresas_publicas
+    // ===============================================================
+    match /empresas_publicas/{uid} {
+      allow read: if isSignedIn();
+
+      allow create, update: if (isEmpresa() && request.auth.uid == uid
+                            && request.resource.data.tipo == 'empresa') || isAdmin();
+
+      allow delete: if isAdmin();
     }
   }
 }

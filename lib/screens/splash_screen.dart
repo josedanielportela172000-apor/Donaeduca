@@ -38,8 +38,8 @@ class _SplashScreenState extends State<SplashScreen> {
                   fontSize: 52,
                   fontWeight: FontWeight.bold,
                 ),
-                children: <TextSpan>[
-                  const TextSpan(text: 'Dona', style: TextStyle(color: Colors.white)),
+                children: const <TextSpan>[
+                  TextSpan(text: 'Dona', style: TextStyle(color: Colors.white)),
                   TextSpan(text: 'Educa', style: TextStyle(color: AppColors.accent)),
                 ],
               ),

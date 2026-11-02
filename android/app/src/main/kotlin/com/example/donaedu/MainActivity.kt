@@ -1,4 +1,4 @@
-package com.example.donaedu
+package com.donaeduca.app
 
 import io.flutter.embedding.android.FlutterActivity
 

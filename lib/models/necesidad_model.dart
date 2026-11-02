@@ -41,4 +41,26 @@ class NecesidadModel {
         'fecha': Timestamp.fromDate(fecha),
         if (imagenUrl != null) 'imagenUrl': imagenUrl,
       };
+
+  NecesidadModel copyWith({
+    String? id,
+    String? colegioId,
+    String? colegioNombre,
+    String? descripcion,
+    String? categoria,
+    String? estado,
+    DateTime? fecha,
+    String? imagenUrl,
+  }) {
+    return NecesidadModel(
+      id: id ?? this.id,
+      colegioId: colegioId ?? this.colegioId,
+      colegioNombre: colegioNombre ?? this.colegioNombre,
+      descripcion: descripcion ?? this.descripcion,
+      categoria: categoria ?? this.categoria,
+      estado: estado ?? this.estado,
+      fecha: fecha ?? this.fecha,
+      imagenUrl: imagenUrl ?? this.imagenUrl,
+    );
+  }
 }

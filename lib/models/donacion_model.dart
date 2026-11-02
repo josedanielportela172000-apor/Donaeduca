@@ -9,6 +9,11 @@ class DonacionModel {
   final String necesidadId;
   final String descripcion;
   final DateTime fecha;
+  // Datos de contacto de la empresa donante, para que el colegio pueda contactarla.
+  final String? empresaTelefono;
+  final String? empresaEmail;
+  final String estado; // 'Pendiente', 'Recibida' o 'Completada'
+  final DateTime? fechaRecibida;
  
   DonacionModel({
     required this.id,
@@ -19,6 +24,10 @@ class DonacionModel {
     required this.necesidadId,
     required this.descripcion,
     required this.fecha,
+    this.empresaTelefono,
+    this.empresaEmail,
+    this.estado = 'Pendiente',
+    this.fechaRecibida,
   });
 
   factory DonacionModel.fromMap(Map<String, dynamic> m, String id) {
@@ -34,6 +43,10 @@ class DonacionModel {
       fecha: m['fecha'] is Timestamp 
           ? (m['fecha'] as Timestamp).toDate() 
           : DateTime.now(),
+      empresaTelefono: m['empresaTelefono'],
+      empresaEmail: m['empresaEmail'],
+      estado: m['estado'] ?? 'Pendiente',
+      fechaRecibida: m['recibidaEn'] is Timestamp ? (m['recibidaEn'] as Timestamp).toDate() : null,
     );
   }
 
@@ -46,6 +59,10 @@ class DonacionModel {
       'necesidadId': necesidadId,
       'descripcion': descripcion,
       'fecha': Timestamp.fromDate(fecha),
+      if (empresaTelefono != null) 'empresaTelefono': empresaTelefono,
+      if (empresaEmail != null) 'empresaEmail': empresaEmail,
+      'estado': estado,
+      if (fechaRecibida != null) 'recibidaEn': Timestamp.fromDate(fechaRecibida!),
     };
   }
 }

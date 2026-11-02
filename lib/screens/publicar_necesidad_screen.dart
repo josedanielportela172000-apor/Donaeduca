@@ -5,22 +5,16 @@ import '../models/usuario_model.dart';
 import '../models/necesidad_model.dart';
 import '../services/firestore_service.dart';
 import '../services/cloudinary_service.dart';
+import '../services/auth_service.dart';
 import '../utils/app_theme.dart';
+import '../utils/categorias.dart';
 
-const _categorias = [
-  'Tecnologia',
-  'Mobiliario',
-  'Utiles escolares',
-  'Deportes',
-  'Libros',
-  'Infraestructura',
-  'Alimentacion',
-  'Otro'
-];
+const _categorias = categorias;
 
 class PublicarNecesidadScreen extends StatefulWidget {
   final UsuarioModel usuario;
-  const PublicarNecesidadScreen({super.key, required this.usuario});
+  final NecesidadModel? necesidad;
+  const PublicarNecesidadScreen({super.key, required this.usuario, this.necesidad});
 
   @override
   State<PublicarNecesidadScreen> createState() => _PNState();
@@ -29,11 +23,23 @@ class PublicarNecesidadScreen extends StatefulWidget {
 class _PNState extends State<PublicarNecesidadScreen> {
   final _formKey = GlobalKey<FormState>();
   final _descController = TextEditingController();
-  String _cat = 'Tecnologia';
+  late String _cat;
   bool _isLoading = false;
   File? _selectedImage;
-  String? _imageUrl;
   final _imagePicker = ImagePicker();
+
+  bool get _isEditing => widget.necesidad != null;
+
+  @override
+  void initState() {
+    super.initState();
+    _cat = normalizarCategoria(widget.necesidad?.categoria ?? '') == ''
+        ? 'Tecnología'
+        : normalizarCategoria(widget.necesidad?.categoria ?? '');
+    if (widget.necesidad != null) {
+      _descController.text = widget.necesidad!.descripcion;
+    }
+  }
 
   @override
   void dispose() {
@@ -50,9 +56,7 @@ class _PNState extends State<PublicarNecesidadScreen> {
     );
 
     if (image != null) {
-      setState(() {
-        _selectedImage = File(image.path);
-      });
+      _setSelectedImage(image);
     }
   }
 
@@ -65,10 +69,26 @@ class _PNState extends State<PublicarNecesidadScreen> {
     );
 
     if (image != null) {
-      setState(() {
-        _selectedImage = File(image.path);
-      });
+      _setSelectedImage(image);
     }
+  }
+
+  void _setSelectedImage(XFile image) {
+    final file = File(image.path);
+    if (file.lengthSync() > 5 * 1024 * 1024) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('La imagen es demasiado grande (máx. 5 MB).'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+      return;
+    }
+    setState(() {
+      _selectedImage = file;
+    });
   }
 
   void _showImagePickerDialog() {
@@ -108,19 +128,101 @@ class _PNState extends State<PublicarNecesidadScreen> {
     );
   }
 
-  Future<void> _publicar() async {
+  Future<void> _showEmailVerificationRequiredDialog() async {
+    bool reenviando = false;
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.mark_email_unread_rounded, color: AppColors.error),
+              SizedBox(width: 10),
+              Expanded(child: Text('Verificación requerida', style: TextStyle(fontSize: 18))),
+            ],
+          ),
+          content: const Text(
+            'Para publicar necesidades en la plataforma, debes tener tu correo electrónico verificado. Esto protege a la comunidad contra publicaciones falsas o no autorizadas.',
+            style: TextStyle(fontSize: 14),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: reenviando ? null : () async {
+                setDialogState(() => reenviando = true);
+                final err = await AuthService.instance.enviarVerificacion();
+                if (ctx.mounted && mounted) {
+                  setDialogState(() => reenviando = false);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(err ?? 'Correo de verificación reenviado. Revisa tu bandeja de entrada.'),
+                      backgroundColor: err == null ? AppColors.secondary : AppColors.error,
+                    ),
+                  );
+                }
+              },
+              child: reenviando
+                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Text('Reenviar correo'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final isVerif = await AuthService.instance.reloadEmailVerification();
+                if (ctx.mounted && mounted) {
+                  Navigator.pop(ctx);
+                  if (isVerif) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('¡Correo verificado con éxito! Ahora puedes publicar.'),
+                        backgroundColor: AppColors.secondary,
+                      ),
+                    );
+                    _submit();
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Aún no has verificado el enlace que llegó a tu correo.'),
+                        backgroundColor: AppColors.error,
+                      ),
+                    );
+                  }
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Ya lo verifiqué'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+
+    final isVerif = await AuthService.instance.reloadEmailVerification();
+    if (!isVerif) {
+      if (mounted) _showEmailVerificationRequiredDialog();
+      return;
+    }
 
     setState(() => _isLoading = true);
 
     try {
-      String? imageUrl;
+      String? imageUrl = widget.necesidad?.imagenUrl;
 
       if (_selectedImage != null) {
         final cloudinaryService = CloudinaryService();
-        imageUrl = await cloudinaryService.uploadImage(_selectedImage!);
+        final nuevaUrl = await cloudinaryService.uploadImage(_selectedImage!);
 
-        if (imageUrl == null) {
+        if (nuevaUrl == null) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
@@ -128,33 +230,49 @@ class _PNState extends State<PublicarNecesidadScreen> {
                 backgroundColor: AppColors.error,
               ),
             );
+            setState(() => _isLoading = false);
           }
-          setState(() => _isLoading = false);
           return;
         }
+        imageUrl = nuevaUrl;
       }
 
-      await FirestoreService().publicarNecesidad(NecesidadModel(
-        id: '',
-        colegioId: widget.usuario.uid,
-        colegioNombre: widget.usuario.nombre,
-        descripcion: _descController.text.trim(),
-        categoria: _cat,
-        estado: 'pendiente',
-        fecha: DateTime.now(),
-        imagenUrl: imageUrl,
-      ));
+      if (_isEditing) {
+        await FirestoreService.instance.updateNecesidad(widget.necesidad!.id, {
+          'colegioId': widget.usuario.uid,
+          'colegioNombre': widget.usuario.nombre,
+          'descripcion': _descController.text.trim(),
+          'categoria': _cat,
+          'estado': widget.necesidad!.estado,
+          'fecha': widget.necesidad!.fecha,
+          if (imageUrl != null) 'imagenUrl': imageUrl,
+        });
+      } else {
+        await FirestoreService.instance.publicarNecesidad(NecesidadModel(
+          id: '',
+          colegioId: widget.usuario.uid,
+          colegioNombre: widget.usuario.nombre,
+          descripcion: _descController.text.trim(),
+          categoria: _cat,
+          estado: 'pendiente',
+          fecha: DateTime.now(),
+          imagenUrl: imageUrl,
+        ));
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Necesidad publicada con éxito')),
+          SnackBar(
+            content: Text(_isEditing ? 'Necesidad actualizada con éxito' : 'Necesidad publicada con éxito'),
+            backgroundColor: AppColors.secondary,
+          ),
         );
         Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al publicar: $e'), backgroundColor: AppColors.error),
+          SnackBar(content: Text('Error al guardar: $e'), backgroundColor: AppColors.error),
         );
       }
     } finally {
@@ -164,7 +282,7 @@ class _PNState extends State<PublicarNecesidadScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Publicar necesidad')),
+        appBar: AppBar(title: Text(_isEditing ? 'Editar necesidad' : 'Publicar necesidad')),
         body: SingleChildScrollView(
           padding: const EdgeInsets.all(22),
           child: Form(
@@ -172,53 +290,79 @@ class _PNState extends State<PublicarNecesidadScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text('Categoria', style: TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                DropdownButtonFormField<String>(
-                  value: _cat,
-                  decoration: const InputDecoration(prefixIcon: Icon(Icons.category_outlined)),
-                  items: _categorias.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
-                  onChanged: (v) => setState(() => _cat = v!),
-                ),
+                _buildCategoriaDropdown(),
                 const SizedBox(height: 18),
-                const Text('Descripcion', style: TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                TextFormField(
-                  controller: _descController,
-                  maxLines: 4,
-                  decoration: const InputDecoration(hintText: 'Ej: Necesitamos 20 sillas para 5to grado...'),
-                  validator: (v) => v!.isEmpty ? 'Escribe la descripcion' : null,
-                ),
+                _buildDescripcionField(),
                 const SizedBox(height: 18),
                 const Text('Imagen (opcional)', style: TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 _buildImageSection(),
                 const SizedBox(height: 28),
-                SizedBox(
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _publicar,
-                    child: _isLoading
-                        ? const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
-                              ),
-                              SizedBox(width: 16),
-                              Text('Publicando...'),
-                            ],
-                          )
-                        : const Text('Publicar necesidad', style: TextStyle(fontSize: 16)),
-                  ),
-                ),
+                _buildSubmitButton(),
               ],
             ),
           ),
         ),
       );
+
+  Widget _buildCategoriaDropdown() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Categoria', style: TextStyle(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          initialValue: _cat,
+          decoration: const InputDecoration(prefixIcon: Icon(Icons.category_outlined)),
+          items: _categorias.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+          onChanged: (v) => setState(() => _cat = v!),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDescripcionField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Descripcion', style: TextStyle(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: _descController,
+          maxLines: 4,
+          maxLength: 480,
+          decoration: const InputDecoration(hintText: 'Ej: Necesitamos 20 sillas para 5to grado...'),
+          validator: (v) => (v == null || v.trim().isEmpty) ? 'Escribe la descripcion' : null,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSubmitButton() {
+    return SizedBox(
+      height: 50,
+      child: ElevatedButton(
+        onPressed: _isLoading ? null : _submit,
+        child: _isLoading
+            ? const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+                  ),
+                  SizedBox(width: 16),
+                  Text('Guardando...'),
+                ],
+              )
+            : Text(
+                _isEditing ? 'Guardar cambios' : 'Publicar necesidad',
+                style: const TextStyle(fontSize: 16),
+              ),
+      ),
+    );
+  }
 
   Widget _buildImageSection() {
     if (_selectedImage != null) {

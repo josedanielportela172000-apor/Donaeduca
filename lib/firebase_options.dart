@@ -42,7 +42,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions web = FirebaseOptions(
     apiKey: 'AIzaSyCtyRTM8Luk6vcXDYpLfcbB8yEieZoVhQ4',
-    appId: '1:139969156781:web:44737826882c82fd45d824',
+    appId: '1:139969156781:web:04b95970bc75c2f945d824',
     messagingSenderId: '139969156781',
     projectId: 'donaedu-6accd',
     authDomain: 'donaedu-6accd.firebaseapp.com',
@@ -51,7 +51,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyBTiR7z9QNFjfJaRjk2ORuVcvy4J1mwwKo',
-    appId: '1:139969156781:android:13f0632d6158ce4c45d824',
+    appId: '1:139969156781:android:4b5be09db4556eec45d824',
     messagingSenderId: '139969156781',
     projectId: 'donaedu-6accd',
     storageBucket: 'donaedu-6accd.firebasestorage.app',
@@ -59,11 +59,11 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyB8uGILJB_Fyrp9lA54JQ0nS2Xn7cq_eAs',
-    appId: '1:139969156781:ios:faee21f8b8ff18f345d824',
+    appId: '1:139969156781:ios:2d7aae04ac8dfe2345d824',
     messagingSenderId: '139969156781',
     projectId: 'donaedu-6accd',
     storageBucket: 'donaedu-6accd.firebasestorage.app',
-    iosBundleId: 'edu.donaeduca.app',
+    iosBundleId: 'com.donaeduca.app',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
@@ -72,15 +72,16 @@ class DefaultFirebaseOptions {
     messagingSenderId: '139969156781',
     projectId: 'donaedu-6accd',
     storageBucket: 'donaedu-6accd.firebasestorage.app',
-    iosBundleId: 'edu.donaeduca.app',
+    iosBundleId: 'com.example.donaedu',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
     apiKey: 'AIzaSyCtyRTM8Luk6vcXDYpLfcbB8yEieZoVhQ4',
-    appId: '1:139969156781:web:04b95970bc75c2f945d824',
+    appId: '1:139969156781:web:d1324d42414f73d445d824',
     messagingSenderId: '139969156781',
     projectId: 'donaedu-6accd',
     authDomain: 'donaedu-6accd.firebaseapp.com',
     storageBucket: 'donaedu-6accd.firebasestorage.app',
   );
+
 }
